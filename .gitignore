@@ -2,6 +2,7 @@ data/
 models/*.pt
 models/*.pth
 models/*.h5
+checkpoints/
 outputs/
 *.zip
 __pycache__/
