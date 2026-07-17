@@ -1,0 +1,12 @@
+data/
+models/*.pt
+models/*.pth
+models/*.h5
+outputs/
+*.zip
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+.env
