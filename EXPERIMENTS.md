@@ -76,3 +76,47 @@ Grade별 precision/recall/f1:
 **검증**: `config/quick.yaml`(train 300 / val 100, 3 epoch)로 스모크 테스트 — 에러 없이 동작, lr이 매 epoch 감소하는 것 확인 (0.0001 → 0.000075 → 0.000025). train_loss가 1차보다 다소 높게 나오는 건 augmentation으로 인한 정상적인 현상(매 배치 이미지가 랜덤 변형되어 난이도 상승), 실제 개선 효과는 Colab에서 25 epoch 풀 학습 후 확인 예정.
 
 **다음 할 일**: 이 코드로 Colab GPU에서 `config/default.yaml` 재학습 → 새 `best.pth`로 confusion matrix 재비교 + 실제 데이터 기반 Grad-CAM 시각화
+
+---
+
+## 2026-07-18 — 2차 학습 결과 (Augmentation + LR Scheduler 적용, 25 epoch)
+
+Colab GPU에서 `config/default.yaml`(25 epoch, augmentation 적용)로 재학습한 `best.pth`를 로컬 val set(826장)으로 재평가.
+
+### 결과 비교 (1차 vs 2차)
+
+| 지표 | 1차 (증강 전, 10 epoch) | 2차 (증강+scheduler, 25 epoch) | 변화 |
+|---|---|---|---|
+| Accuracy | 0.557 | 0.580 | +0.023 |
+| **Cohen's Kappa (quadratic)** | 0.661 | **0.759** | **+0.098** |
+
+Confusion Matrix (2차, 행=실제, 열=예측):
+
+| 실제\예측 | 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| 0 | 230 | 79 | 14 | 5 | 0 |
+| 1 | 73 | 47 | 29 | 4 | 0 |
+| 2 | 37 | 46 | 99 | 29 | 1 |
+| 3 | 2 | 2 | 15 | 81 | 6 |
+| 4 | 0 | 0 | 0 | 5 | 22 |
+
+Grade별 recall 비교:
+
+| grade | recall (1차) | recall (2차) | 변화 |
+|---|---|---|---|
+| 0 | 0.716 | 0.701 | 소폭 하락 |
+| 1 | 0.235 | 0.307 | 개선 |
+| 2 | 0.533 | 0.467 | 하락 |
+| 3 | 0.594 | 0.764 | 크게 개선 |
+| 4 | 0.481 | 0.815 | 크게 개선 |
+
+### 분석
+- **accuracy는 소폭 개선(+2.3pp)이지만 kappa는 큰 폭으로 개선(+0.098)** — CLAUDE.md에서 명시한 대로 이 과제의 핵심 지표는 accuracy가 아닌 kappa이므로, 실질적으로 유의미한 개선으로 판단
+- **grade 3, 4(중증) recall이 크게 향상** — 특히 grade 4는 0.481→0.815로, 스크리닝 트리아지 목적(중증 환자를 놓치지 않는 것)에 중요한 개선
+- **grade 2 recall은 오히려 하락**(0.533→0.467) — grade 1/3과의 경계에서 혼동이 늘어난 것으로 보임 (실제 grade 2 중 46건이 1로, 29건이 3으로 오분류). augmentation이 중간 등급의 경계를 더 흐리게 만들었을 가능성
+- 여전히 오분류는 인접 등급 사이에서만 발생 (0↔4 등 극단적 오류 없음) — ordinal loss 효과 유지
+
+### 다음 개선 방향
+- [ ] grade 2 recall 하락 원인 확인 — augmentation 강도(rotation/jitter)를 낮춰서 재실험 비교
+- [ ] 실제 데이터 기반 Grad-CAM 시각화 (특히 grade 1, 2 오분류 사례 위주로 확인)
+- [ ] grade 1 recall이 여전히 낮음(0.307) — grade 0/1 경계 개선을 위한 추가 데이터 또는 fine-grained loss 검토
