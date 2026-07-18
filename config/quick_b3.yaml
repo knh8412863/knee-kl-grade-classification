@@ -1,6 +1,6 @@
 data:
-  train_dir: data/raw/KneeXrayData/ClsKLData/kneeKL224/train
-  val_dir: data/raw/KneeXrayData/ClsKLData/kneeKL224/val
+  train_dir: data/raw/KneeXrayData/ClsKLData/kneeKL299/train
+  val_dir: data/raw/KneeXrayData/ClsKLData/kneeKL299/val
   in_channels: 3
   num_workers: 2
   max_train_samples: 60
