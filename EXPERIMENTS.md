@@ -203,6 +203,45 @@ Grade별 recall 비교:
 - 임상적 관점: grade 0을 1로 과대진단하는 오류는 grade 1을 0으로 과소진단(놓침)하는 오류보다 상대적으로 덜 위험한 방향 — 스크리닝 트리아지 목적에는 나쁘지 않은 트레이드오프로 판단
 
 ### 다음 개선 방향
-- [ ] grade 0/1 경계 트레이드오프를 조정할 별도 임계값(threshold) 튜닝 검토 (softmax 확률 기반 후처리)
+- [x] grade 0/1 경계 트레이드오프를 조정할 별도 임계값(threshold) 튜닝 검토 — 아래 참고
 - [ ] grade 3 recall이 소폭 하락한 원인 확인 (2/3 경계 혼동 증가 여부)
 - [ ] 현재까지 결과를 baseline으로 확정하고, FastAPI 서비스화 등 다음 단계 진행 여부 결정
+
+---
+
+## 2026-07-18 — Test set 최종 검증 + Ordinal Threshold 튜닝
+
+### 1. Test set 최종 검증 (val 과적합 여부 확인)
+
+지금까지 val set(826장)으로만 반복 튜닝해왔기 때문에, 한 번도 사용하지 않은 test set(1,656장)으로 3차 모델을 최종 확인.
+
+| | val | test |
+|---|---|---|
+| accuracy | 0.588 | 0.582 |
+| kappa | 0.761 | 0.770 |
+
+val과 test 성능이 거의 동일 (test가 오히려 kappa는 약간 더 높음) → **val 반복 튜닝으로 인한 과적합은 없었음**. 지금까지의 결과 신뢰 가능.
+
+### 2. Ordinal Threshold 튜닝
+
+기존 방식(`argmax`)은 5개 로짓 중 최댓값만 보고, softmax 확률의 순서형 구조(등급 간 거리)를 버림. 대신 **softmax 확률의 기대값**(`expected_grade = Σ(prob_i × grade_i)`)을 계산하고, 이 연속값을 등급으로 변환하는 절단점(threshold)을 val set에서 quadratic-weighted Kappa 기준으로 최적화.
+
+- 구현: `src/threshold_tuning.py` (`get_expected_grades`, `tune_thresholds`, `apply_thresholds`), `src/evaluate.py` — CLAUDE.md에 명시된 `python src/evaluate.py --model_path checkpoints/best.pth` 커맨드를 실제로 구현
+- 탐색 방법: 4개 절단점(0-1, 1-2, 2-3, 3-4 경계)에 대해 val set 기준 coordinate ascent로 grid search (val에서만 튜닝, test는 검증에만 사용)
+- 튜닝된 절단점: `[0.70, 1.35, 2.05, 3.05]` (표준 반올림 기준 `[0.5, 1.5, 2.5, 3.5]` 대비 낮은 등급 쪽으로 이동)
+
+### 결과 비교 (test set, 재학습 없이 추론 방식만 변경)
+
+| 방식 | accuracy | kappa |
+|---|---|---|
+| argmax (기존) | 0.582 | 0.770 |
+| 기대값 + 표준 반올림 | 0.570 | 0.789 |
+| **기대값 + Kappa 튜닝 threshold** | **0.597** | **0.795** |
+
+- val에서 튜닝한 threshold가 test에서도 일관되게 개선 (val 전용 튜닝임에도 test에 잘 일반화됨)
+- 재학습 비용 없이 **kappa +0.025, accuracy +1.5%p** 개선
+- grade별로는 grade 0(0.624→0.698), grade 3(0.679→0.825), grade 4(0.815→0.824) recall이 개선되고, grade 1(0.490→0.378)/grade 2(0.533→0.456) recall은 다소 하락 — 전체 kappa/accuracy 관점에서는 순이익이지만, grade 1 민감도가 중요한 경우라면 argmax 유지를 고려할 수 있음
+
+### 결론
+- **다음 학습부터는 추론 시 argmax 대신 `src/evaluate.py`의 threshold 방식을 기본으로 사용**
+- threshold 값은 체크포인트마다(재학습할 때마다) 달라지므로, 매번 val set으로 재튜닝 필요 (`tune_thresholds` 함수가 이를 자동화)
