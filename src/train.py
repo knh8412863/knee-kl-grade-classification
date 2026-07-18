@@ -20,11 +20,17 @@ def subsample(dataset: KneeXrayDataset, max_samples: int | None) -> None:
     dataset.samples = random.sample(dataset.samples, max_samples)
 
 
-def build_sampler(dataset: KneeXrayDataset) -> WeightedRandomSampler:
-    """Weights each sample by the inverse frequency of its grade to counter class imbalance."""
+def compute_class_weights(dataset: KneeXrayDataset) -> np.ndarray:
+    """Inverse grade frequency, normalized to a mean of 1."""
     labels = np.array([label for _, label in dataset.samples])
     class_counts = np.bincount(labels, minlength=NUM_CLASSES)
     class_weights = 1.0 / np.clip(class_counts, 1, None)
+    return class_weights / class_weights.mean()
+
+
+def build_sampler(dataset: KneeXrayDataset, class_weights: np.ndarray) -> WeightedRandomSampler:
+    """Samples each grade with a frequency proportional to its class weight, to counter class imbalance."""
+    labels = np.array([label for _, label in dataset.samples])
     sample_weights = class_weights[labels]
     return WeightedRandomSampler(
         weights=torch.as_tensor(sample_weights, dtype=torch.double),
@@ -59,7 +65,8 @@ def train(config: dict) -> None:
     subsample(train_dataset, config["data"].get("max_train_samples"))
     subsample(val_dataset, config["data"].get("max_val_samples"))
 
-    sampler = build_sampler(train_dataset)
+    class_weights = compute_class_weights(train_dataset)
+    sampler = build_sampler(train_dataset, class_weights)
     train_loader = DataLoader(
         train_dataset,
         batch_size=config["train"]["batch_size"],
@@ -74,7 +81,8 @@ def train(config: dict) -> None:
     )
 
     model = KLGradeModel(in_channels=in_channels, pretrained=True).to(device)
-    loss_fn = OrdinalCELoss(mse_weight=config["train"]["mse_weight"]).to(device)
+    loss_class_weights = torch.as_tensor(class_weights, dtype=torch.float32)
+    loss_fn = OrdinalCELoss(mse_weight=config["train"]["mse_weight"], class_weights=loss_class_weights).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=config["train"]["lr"])
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config["train"]["epochs"])
 

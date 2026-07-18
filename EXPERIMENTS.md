@@ -146,3 +146,17 @@ Grade별 recall 비교:
 ### 결론 및 다음 방향
 - Grad-CAM 결과, 모델의 한계는 "잘못된 부위를 본다"가 아니라 **"grade 1처럼 미세한 신호에 대한 민감도가 부족하다"**는 쪽에 가까움
 - 다음 시도로는 grade 1 샘플에 대한 가중치를 더 높이거나(loss에 class weight 추가), grade 1/0 경계를 더 잘 구분하도록 하는 fine-grained 접근이 grade 2 augmentation 튜닝보다 우선순위가 높다고 판단
+
+---
+
+## 2026-07-18 — 3차 개선: Loss에 Class Weight 추가
+
+Grad-CAM 분석 결론에 따라, grade 1의 학습 신호를 강화하기 위해 loss 단계에도 클래스 가중치 반영.
+
+- **`src/baseline.py`**: `OrdinalCELoss`에 `class_weights` 옵션 추가 — `F.cross_entropy(logits, targets, weight=class_weights)`로 소수 클래스(특히 grade 1, 4) 오분류에 더 큰 페널티 부여
+- **`src/train.py`**: 기존 `WeightedRandomSampler`에서 쓰던 클래스별 역빈도 가중치 계산 로직을 `compute_class_weights()`로 분리해서, 샘플링(sampler)과 loss 양쪽에 동일한 가중치를 재사용
+  - 참고: 샘플링으로 이미 배치 내 클래스 비율을 맞추고 있어 완전히 새로운 정보는 아니지만, loss 페널티까지 더하면 소수 클래스 오분류 시 gradient 크기 자체가 커져 추가적인 학습 신호를 줄 수 있음
+
+**검증**: `config/quick.yaml`로 스모크 테스트 — 에러 없이 3 epoch 정상 동작 확인 (수치는 미니 데이터셋이라 참고용)
+
+**다음 할 일**: Colab GPU에서 `config/default.yaml`(25 epoch)로 재학습 → grade 1 recall이 실제로 개선됐는지, grade 2/4 성능은 유지되는지 3차 결과 비교

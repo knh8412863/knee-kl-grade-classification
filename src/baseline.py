@@ -91,13 +91,14 @@ class OrdinalCELoss(nn.Module):
     scales the penalty with how far the prediction is from the true grade.
     """
 
-    def __init__(self, mse_weight: float = 0.5) -> None:
+    def __init__(self, mse_weight: float = 0.5, class_weights: torch.Tensor | None = None) -> None:
         super().__init__()
         self.mse_weight = mse_weight
         self.register_buffer("grades", torch.arange(NUM_CLASSES, dtype=torch.float32))
+        self.register_buffer("class_weights", class_weights)
 
     def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        ce = F.cross_entropy(logits, targets)
+        ce = F.cross_entropy(logits, targets, weight=self.class_weights)
         probs = F.softmax(logits, dim=1)
         expected_grade = probs @ self.grades
         mse = F.mse_loss(expected_grade, targets.float())
