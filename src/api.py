@@ -28,8 +28,9 @@ MODEL_BACKBONE = os.environ.get("MODEL_BACKBONE", "efficientnet_b3")
 IN_CHANNELS = 3
 INPUT_SIZE = 299
 
-# Fit on the validation set for the current baseline checkpoint (see EXPERIMENTS.md,
-# 5th iteration). Re-run `src/evaluate.py` and update this if the checkpoint changes.
+# Fit on the validation set for the current baseline checkpoint (see
+# "작업 과정이나 정리/모델링_과정_기록.md", 5th iteration). Re-run `src/evaluate.py` and
+# update this if the checkpoint changes.
 GRADE_THRESHOLDS = [0.85, 1.65, 2.5, 3.55]
 
 GRADE_DESCRIPTIONS = {

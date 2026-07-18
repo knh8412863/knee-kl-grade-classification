@@ -10,18 +10,23 @@
 ## 프로젝트 구조
 
 ```
-data/
-  raw/            # 원본 데이터셋
-  processed/      # 전처리된 데이터
-src/              # 학습/추론/전처리 코드
-notebooks/        # 실험용 노트북
-models/           # 학습된 모델 가중치 (git 미포함)
-outputs/          # 결과물 (Grad-CAM 이미지 등, git 미포함)
+data/             # 데이터셋 (git 미포함)
+src/               # 학습/추론/API 코드
+config/            # 학습 설정 (yaml)
+checkpoints/       # 학습된 모델 가중치 (git 미포함)
+outputs/           # Grad-CAM 등 결과물 (git 미포함)
+notebooks/         # Colab 학습 노트북
+docs/              # 모델링/기능별 작업 기록 (포트폴리오 참고용)
 ```
+
+## 문서
+
+- [`docs/modeling.md`](docs/modeling.md) — 모델링 실험 기록 및 트러블슈팅
+- [`docs/api.md`](docs/api.md) — FastAPI 판독 리포트 서비스 및 트러블슈팅
 
 ## 진행 단계
 
-1. [ ] 데이터 전처리 및 EDA
-2. [ ] CNN(ResNet/EfficientNet) 파인튜닝
-3. [ ] Grad-CAM 시각화
-4. [ ] (확장) FastAPI 서비스화
+1. [x] CNN(EfficientNet) 파인튜닝 + Ordinal loss + Grad-CAM
+2. [x] FastAPI + LLM 판독 리포트 서비스
+3. [ ] Java 연동 (관리자 페이지)
+4. [ ] 카메라 실시간 처리
