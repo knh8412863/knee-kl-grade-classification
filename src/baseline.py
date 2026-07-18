@@ -14,6 +14,29 @@ from torchvision import transforms
 NUM_CLASSES = 5
 
 
+def build_transform(in_channels: Literal[1, 3], augment: bool = False) -> transforms.Compose:
+    """Preprocessing pipeline shared by training/eval datasets and the inference API."""
+    mean = [0.5] * in_channels
+    std = [0.5] * in_channels
+    ops: list = []
+    if augment:
+        # Mild augmentations: knee X-rays are sensitive to intensity/orientation
+        # shifts, so keep rotation and brightness/contrast jitter small enough
+        # to avoid distorting the joint space or osteophyte features KL grading
+        # depends on.
+        ops += [
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomRotation(degrees=10),
+            transforms.ColorJitter(brightness=0.2, contrast=0.2),
+        ]
+    ops += [
+        transforms.Grayscale(num_output_channels=in_channels),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=mean, std=std),
+    ]
+    return transforms.Compose(ops)
+
+
 class KneeXrayDataset(Dataset):
     """Loads KL-grade labeled knee X-ray PNGs from a `<root_dir>/<grade>/*.png` layout."""
 
@@ -33,28 +56,7 @@ class KneeXrayDataset(Dataset):
             label = int(grade_dir.name)
             self.samples.extend((p, label) for p in grade_dir.glob("*.png"))
 
-        self.transform = transform or self._build_transform(augment)
-
-    def _build_transform(self, augment: bool) -> transforms.Compose:
-        mean = [0.5] * self.in_channels
-        std = [0.5] * self.in_channels
-        ops: list = []
-        if augment:
-            # Mild augmentations: knee X-rays are sensitive to intensity/orientation
-            # shifts, so keep rotation and brightness/contrast jitter small enough
-            # to avoid distorting the joint space or osteophyte features KL grading
-            # depends on.
-            ops += [
-                transforms.RandomHorizontalFlip(p=0.5),
-                transforms.RandomRotation(degrees=10),
-                transforms.ColorJitter(brightness=0.2, contrast=0.2),
-            ]
-        ops += [
-            transforms.Grayscale(num_output_channels=self.in_channels),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean, std=std),
-        ]
-        return transforms.Compose(ops)
+        self.transform = transform or build_transform(in_channels, augment)
 
     def __len__(self) -> int:
         return len(self.samples)

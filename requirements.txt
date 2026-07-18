@@ -10,3 +10,8 @@ grad-cam
 Pillow
 tqdm
 PyYAML
+fastapi
+uvicorn[standard]
+python-multipart
+python-dotenv
+google-genai
