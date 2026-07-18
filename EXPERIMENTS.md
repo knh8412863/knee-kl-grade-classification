@@ -59,7 +59,20 @@ Grade별 precision/recall/f1:
 - 참고 문헌상 이 데이터셋의 baseline 성능(accuracy 60~70%, kappa 0.6~0.7대)과 비교했을 때, 10 epoch만 학습한 1차 결과로는 준수한 수준
 
 ### 6. 다음 개선 방향 (계획)
-- [ ] epoch 수 증가 (10 → 20~30) 및 learning rate scheduler 도입
-- [ ] Data augmentation 추가 (random rotation, horizontal flip 등)
 - [ ] grade 1 오분류 원인 분석을 위한 Grad-CAM 시각화 (관절 틈새/골극 부위를 실제로 보고 있는지 확인)
 - [ ] grade 4 recall 개선을 위한 추가 augmentation 또는 focal loss 검토
+
+---
+
+## 2026-07-18 — 2차 개선: Augmentation + LR Scheduler
+
+1차 결과의 개선 방향에 따라 아래 3가지를 반영:
+
+- **Data augmentation** (`src/baseline.py`): `KneeXrayDataset`에 `augment` 옵션 추가. train 데이터에만 `RandomHorizontalFlip(p=0.5)`, `RandomRotation(±10도)`, `ColorJitter(brightness=0.2, contrast=0.2)` 적용
+  - 강도를 약하게 잡은 이유: 관절 틈새/골극처럼 KL grade 판독의 핵심 근거가 되는 미세 구조가 과도한 변형으로 왜곡되지 않도록 하기 위함
+- **LR scheduler** (`src/train.py`): `CosineAnnealingLR(T_max=epochs)` 추가, epoch마다 현재 lr 로그 출력
+- **Epoch 수 증가**: `config/default.yaml` epochs 10 → 25
+
+**검증**: `config/quick.yaml`(train 300 / val 100, 3 epoch)로 스모크 테스트 — 에러 없이 동작, lr이 매 epoch 감소하는 것 확인 (0.0001 → 0.000075 → 0.000025). train_loss가 1차보다 다소 높게 나오는 건 augmentation으로 인한 정상적인 현상(매 배치 이미지가 랜덤 변형되어 난이도 상승), 실제 개선 효과는 Colab에서 25 epoch 풀 학습 후 확인 예정.
+
+**다음 할 일**: 이 코드로 Colab GPU에서 `config/default.yaml` 재학습 → 새 `best.pth`로 confusion matrix 재비교 + 실제 데이터 기반 Grad-CAM 시각화

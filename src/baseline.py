@@ -21,6 +21,7 @@ class KneeXrayDataset(Dataset):
         self,
         root_dir: str | Path,
         in_channels: Literal[1, 3] = 3,
+        augment: bool = False,
         transform: transforms.Compose | None = None,
     ) -> None:
         self.root_dir = Path(root_dir)
@@ -32,18 +33,28 @@ class KneeXrayDataset(Dataset):
             label = int(grade_dir.name)
             self.samples.extend((p, label) for p in grade_dir.glob("*.png"))
 
-        self.transform = transform or self._default_transform()
+        self.transform = transform or self._build_transform(augment)
 
-    def _default_transform(self) -> transforms.Compose:
+    def _build_transform(self, augment: bool) -> transforms.Compose:
         mean = [0.5] * self.in_channels
         std = [0.5] * self.in_channels
-        return transforms.Compose(
-            [
-                transforms.Grayscale(num_output_channels=self.in_channels),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=mean, std=std),
+        ops: list = []
+        if augment:
+            # Mild augmentations: knee X-rays are sensitive to intensity/orientation
+            # shifts, so keep rotation and brightness/contrast jitter small enough
+            # to avoid distorting the joint space or osteophyte features KL grading
+            # depends on.
+            ops += [
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomRotation(degrees=10),
+                transforms.ColorJitter(brightness=0.2, contrast=0.2),
             ]
-        )
+        ops += [
+            transforms.Grayscale(num_output_channels=self.in_channels),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=mean, std=std),
+        ]
+        return transforms.Compose(ops)
 
     def __len__(self) -> int:
         return len(self.samples)

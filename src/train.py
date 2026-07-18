@@ -54,7 +54,7 @@ def train(config: dict) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     in_channels = config["data"]["in_channels"]
 
-    train_dataset = KneeXrayDataset(config["data"]["train_dir"], in_channels=in_channels)
+    train_dataset = KneeXrayDataset(config["data"]["train_dir"], in_channels=in_channels, augment=True)
     val_dataset = KneeXrayDataset(config["data"]["val_dir"], in_channels=in_channels)
     subsample(train_dataset, config["data"].get("max_train_samples"))
     subsample(val_dataset, config["data"].get("max_val_samples"))
@@ -76,6 +76,7 @@ def train(config: dict) -> None:
     model = KLGradeModel(in_channels=in_channels, pretrained=True).to(device)
     loss_fn = OrdinalCELoss(mse_weight=config["train"]["mse_weight"]).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=config["train"]["lr"])
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config["train"]["epochs"])
 
     checkpoint_dir = Path(config["checkpoint"]["dir"])
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
@@ -98,10 +99,12 @@ def train(config: dict) -> None:
 
         train_loss = running_loss / len(train_dataset)
         val_accuracy, val_kappa = evaluate(model, val_loader, device)
+        current_lr = optimizer.param_groups[0]["lr"]
         print(
             f"epoch {epoch + 1}/{config['train']['epochs']} "
-            f"train_loss={train_loss:.4f} val_accuracy={val_accuracy:.4f} val_kappa={val_kappa:.4f}"
+            f"train_loss={train_loss:.4f} val_accuracy={val_accuracy:.4f} val_kappa={val_kappa:.4f} lr={current_lr:.6f}"
         )
+        scheduler.step()
 
         if val_kappa > best_kappa:
             best_kappa = val_kappa
