@@ -80,7 +80,8 @@ def train(config: dict) -> None:
         num_workers=config["data"]["num_workers"],
     )
 
-    model = KLGradeModel(in_channels=in_channels, pretrained=True).to(device)
+    backbone = config["train"].get("backbone", "efficientnet_b0")
+    model = KLGradeModel(in_channels=in_channels, pretrained=True, backbone=backbone).to(device)
     loss_class_weights = torch.as_tensor(class_weights, dtype=torch.float32)
     loss_fn = OrdinalCELoss(mse_weight=config["train"]["mse_weight"], class_weights=loss_class_weights).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=config["train"]["lr"])

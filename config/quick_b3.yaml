@@ -1,17 +1,18 @@
 data:
   train_dir: data/raw/KneeXrayData/ClsKLData/kneeKL224/train
   val_dir: data/raw/KneeXrayData/ClsKLData/kneeKL224/val
-  test_dir: data/raw/KneeXrayData/ClsKLData/kneeKL224/test
   in_channels: 3
   num_workers: 2
+  max_train_samples: 60
+  max_val_samples: 40
 
 train:
   backbone: efficientnet_b3
-  batch_size: 32
-  epochs: 25
+  batch_size: 16
+  epochs: 2
   lr: 0.0001
   mse_weight: 0.5
 
 checkpoint:
   dir: checkpoints
-  filename: best.pth
+  filename: quick_b3.pth

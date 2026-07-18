@@ -40,7 +40,8 @@ def main() -> None:
     batch_size = config["train"]["batch_size"]
     num_workers = config["data"]["num_workers"]
 
-    model = KLGradeModel(in_channels=in_channels, pretrained=False)
+    backbone = config["train"].get("backbone", "efficientnet_b0")
+    model = KLGradeModel(in_channels=in_channels, pretrained=False, backbone=backbone)
     model.load_state_dict(torch.load(args.model_path, map_location=device))
     model.to(device)
 

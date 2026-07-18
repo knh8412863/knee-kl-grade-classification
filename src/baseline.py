@@ -67,12 +67,17 @@ class KneeXrayDataset(Dataset):
 
 
 class KLGradeModel(nn.Module):
-    """EfficientNet-B0 backbone with a KL-grade classification head."""
+    """timm backbone (default EfficientNet-B0) with a KL-grade classification head."""
 
-    def __init__(self, in_channels: Literal[1, 3] = 3, pretrained: bool = True) -> None:
+    def __init__(
+        self,
+        in_channels: Literal[1, 3] = 3,
+        pretrained: bool = True,
+        backbone: str = "efficientnet_b0",
+    ) -> None:
         super().__init__()
         self.backbone = timm.create_model(
-            "efficientnet_b0",
+            backbone,
             pretrained=pretrained,
             in_chans=in_channels,
             num_classes=NUM_CLASSES,
