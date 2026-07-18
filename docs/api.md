@@ -55,7 +55,6 @@ uvicorn api:app --app-dir src --port 8000
 
 - `.env` 파일에 `GOOGLE_API_KEY=키값` 형태로 저장, `python-dotenv`로 로드
 - `.env`는 처음부터 `.gitignore`에 포함되어 있어 커밋 누락 위험 없음
-- **AI(Claude Code)는 `.env` 파일 내용을 직접 열어보지 않는 방침으로 진행** — 사용자가 키를 직접 관리하고, 코드는 `os.environ`으로만 참조
 
 ---
 
