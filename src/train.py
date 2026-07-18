@@ -74,7 +74,7 @@ def train(config: dict) -> None:
     )
 
     model = KLGradeModel(in_channels=in_channels, pretrained=True).to(device)
-    loss_fn = OrdinalCELoss(mse_weight=config["train"]["mse_weight"])
+    loss_fn = OrdinalCELoss(mse_weight=config["train"]["mse_weight"]).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=config["train"]["lr"])
 
     checkpoint_dir = Path(config["checkpoint"]["dir"])
