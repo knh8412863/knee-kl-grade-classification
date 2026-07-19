@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>무릎 X-ray 실시간 판독</title>
+<style>
+  body { font-family: sans-serif; background: #111; color: #eee; text-align: center; margin: 0; padding: 20px; }
+  h1 { font-size: 1.2rem; font-weight: normal; color: #aaa; }
+  #videoWrap { position: relative; display: inline-block; }
+  video, #overlayImg { width: 480px; height: 480px; object-fit: cover; border-radius: 8px; }
+  #overlayImg { position: absolute; top: 0; left: 0; opacity: 0.85; display: none; }
+  #status { margin-top: 12px; font-size: 1.1rem; }
+  #result { margin-top: 8px; padding: 12px; border-radius: 8px; background: #222; display: inline-block; min-width: 300px; }
+  .grade-badge { font-size: 2rem; font-weight: bold; padding: 4px 16px; border-radius: 6px; }
+  .grade-0, .grade-1, .grade-2 { background: #2d6a4f; }
+  .grade-3, .grade-4 { background: #9d0208; }
+  .grade-not-xray { background: #6a4d2d; font-size: 1.3rem; }
+  #report { font-size: 0.85rem; color: #ccc; margin-top: 8px; max-width: 480px; text-align: left; white-space: pre-wrap; }
+  button { margin-top: 12px; padding: 8px 20px; font-size: 1rem; cursor: pointer; }
+</style>
+</head>
+<body>
+  <h1>웹캠으로 X-ray 필름/인쇄물을 비춘 뒤, 준비되면 판독 버튼을 눌러 주세요</h1>
+  <div id="videoWrap">
+    <video id="video" autoplay playsinline muted></video>
+    <img id="overlayImg" alt="Grad-CAM overlay">
+  </div>
+  <canvas id="canvas" width="299" height="299" style="display:none"></canvas>
+  <div id="status">카메라 준비 중...</div>
+  <div id="result" style="display:none">
+    <span id="gradeBadge" class="grade-badge">-</span>
+    <div id="confidence"></div>
+    <div id="report"></div>
+  </div>
+  <div>
+    <button id="predictBtn" style="display:none">판독</button>
+    <button id="rescanBtn" style="display:none">재개</button>
+  </div>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const overlayImg = document.getElementById('overlayImg');
+const statusEl = document.getElementById('status');
+const resultEl = document.getElementById('result');
+const gradeBadge = document.getElementById('gradeBadge');
+const confidenceEl = document.getElementById('confidence');
+const reportEl = document.getElementById('report');
+const predictBtn = document.getElementById('predictBtn');
+const rescanBtn = document.getElementById('rescanBtn');
+
+let inFlight = false;
+
+predictBtn.addEventListener('click', captureAndPredict);
+
+rescanBtn.addEventListener('click', () => {
+  resultEl.style.display = 'none';
+  overlayImg.style.display = 'none';
+  rescanBtn.style.display = 'none';
+  predictBtn.style.display = 'inline-block';
+  statusEl.textContent = '판독 준비됨. 카메라를 맞추고 판독 버튼을 눌러 주세요.';
+});
+
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 480, height: 480 } });
+    video.srcObject = stream;
+    statusEl.textContent = '판독 준비됨. 카메라를 맞추고 판독 버튼을 눌러 주세요.';
+    predictBtn.style.display = 'inline-block';
+  } catch (err) {
+    statusEl.textContent = '카메라를 사용할 수 없습니다. 브라우저의 카메라 권한을 확인해 주세요.';
+  }
+}
+
+// Maps a failed /predict call to a message a non-developer can act on,
+// instead of showing a raw HTTP status code.
+function describeError(response) {
+  if (response === null) {
+    return '서버에 연결할 수 없습니다. 서버가 켜져 있는지 확인해 주세요.';
+  }
+  if (response.status === 400) {
+    return '이미지를 처리할 수 없습니다. 카메라 각도를 조정한 뒤 다시 시도해 주세요.';
+  }
+  if (response.status >= 500) {
+    return '서버에서 판독 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+  }
+  return '판독에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+}
+
+async function captureAndPredict() {
+  if (inFlight) return;
+  inFlight = true;
+  predictBtn.disabled = true;
+  statusEl.textContent = '판독 중...';
+  let response = null;
+  try {
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+
+    const formData = new FormData();
+    formData.append('file', blob, 'frame.png');
+
+    response = await fetch('/predict', { method: 'POST', body: formData });
+    if (!response.ok) {
+      statusEl.textContent = describeError(response);
+      return;
+    }
+    const data = await response.json();
+
+    statusEl.textContent = '분석 완료';
+    predictBtn.style.display = 'none';
+    rescanBtn.style.display = 'inline-block';
+    renderResult(data);
+  } catch (err) {
+    statusEl.textContent = describeError(null);
+  } finally {
+    inFlight = false;
+    predictBtn.disabled = false;
+  }
+}
+
+function renderResult(data) {
+  resultEl.style.display = 'inline-block';
+
+  if (!data.likely_xray) {
+    gradeBadge.textContent = '확인 필요';
+    gradeBadge.className = 'grade-badge grade-not-xray';
+    confidenceEl.textContent = '';
+    reportEl.textContent = data.report;
+    overlayImg.style.display = 'none';
+    return;
+  }
+
+  gradeBadge.textContent = 'Grade ' + data.predicted_grade;
+  gradeBadge.className = 'grade-badge grade-' + data.predicted_grade;
+  confidenceEl.textContent = `신뢰도 ${(data.confidence * 100).toFixed(1)}% · ${data.grade_description}`;
+  reportEl.textContent = data.report;
+
+  if (data.gradcam_image_base64) {
+    overlayImg.src = 'data:image/png;base64,' + data.gradcam_image_base64;
+    overlayImg.style.display = 'block';
+  }
+}
+
+startCamera();
+</script>
+</body>
+</html>
