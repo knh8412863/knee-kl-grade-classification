@@ -10,23 +10,26 @@
 ## 프로젝트 구조
 
 ```
-data/             # 데이터셋 (git 미포함)
-src/               # 학습/추론/API 코드
+data/              # 데이터셋 (git 미포함)
+src/               # 학습/추론/API 코드 (Python)
+admin-server/      # 관리자 서버 (Spring Boot, Java)
 config/            # 학습 설정 (yaml)
 checkpoints/       # 학습된 모델 가중치 (git 미포함)
 outputs/           # Grad-CAM 등 결과물 (git 미포함)
 notebooks/         # Colab 학습 노트북
-docs/              # 모델링/기능별 작업 기록 (포트폴리오 참고용)
+docker-compose.yml # MySQL (admin-server용)
+docs/              # 모델링/기능별 작업 기록
 ```
 
 ## 문서
 
 - [`docs/modeling.md`](docs/modeling.md) — 모델링 실험 기록 및 트러블슈팅
 - [`docs/api.md`](docs/api.md) — FastAPI 판독 리포트 서비스 및 트러블슈팅
+- [`docs/java-integration.md`](docs/java-integration.md) — Spring Boot 관리자 서버 및 트러블슈팅
 
 ## 진행 단계
 
 1. [x] CNN(EfficientNet) 파인튜닝 + Ordinal loss + Grad-CAM
 2. [x] FastAPI + LLM 판독 리포트 서비스
-3. [ ] Java 연동 (관리자 페이지)
+3. [x] Java 연동 (관리자 서버: 환자/업로드 이력 관리)
 4. [ ] 카메라 실시간 처리
