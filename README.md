@@ -49,10 +49,12 @@ flowchart LR
 - [`docs/modeling.md`](docs/modeling.md) — 모델링 실험 기록 및 트러블슈팅
 - [`docs/api.md`](docs/api.md) — FastAPI 판독 리포트 서비스 및 트러블슈팅
 - [`docs/java-integration.md`](docs/java-integration.md) — Spring Boot 관리자 서버 및 트러블슈팅
+- [`docs/camera-realtime.md`](docs/camera-realtime.md) — 브라우저 웹캠 실시간 판독
+- [`docs/deployment.md`](docs/deployment.md) — Render 무료 배포 (스마트폰 카메라 테스트용)
 
 ## 진행 단계
 
 1. [x] CNN(EfficientNet) 파인튜닝 + Ordinal loss + Grad-CAM
 2. [x] FastAPI + LLM 판독 리포트 서비스
 3. [x] Java 연동 (관리자 서버: 환자/업로드 이력 관리)
-4. [ ] 카메라 실시간 처리
+4. [x] 카메라 실시간 처리 (알림 시스템은 별도 진행 중)

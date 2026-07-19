@@ -1,0 +1,15 @@
+# Minimal runtime dependencies for deploying src/api.py (inference only —
+# excludes training/eval-only packages like pandas, scikit-learn, matplotlib).
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+timm
+numpy
+Pillow
+opencv-python-headless
+grad-cam
+fastapi
+uvicorn[standard]
+python-multipart
+python-dotenv
+google-genai

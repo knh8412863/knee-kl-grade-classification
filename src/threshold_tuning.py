@@ -6,7 +6,6 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from sklearn.metrics import cohen_kappa_score
 from torch.utils.data import DataLoader
 
 from baseline import KLGradeModel, NUM_CLASSES
@@ -49,6 +48,8 @@ def tune_thresholds(
     (4 ordered scalars in [0, 4]) that coordinate ascent reliably finds a good optimum
     without needing a general-purpose optimizer.
     """
+    from sklearn.metrics import cohen_kappa_score  # only needed for tuning, not inference
+
     thresholds = list(initial or DEFAULT_THRESHOLDS)
     grid = np.arange(0.1, 3.95, grid_step)
 

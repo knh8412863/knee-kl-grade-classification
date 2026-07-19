@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: knee-kl-grade-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-api.txt
+    startCommand: uvicorn api:app --app-dir src --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: MODEL_CHECKPOINT_PATH
+        value: model/best.pth
+      - key: MODEL_BACKBONE
+        value: efficientnet_b3
+      - key: GOOGLE_API_KEY
+        sync: false
