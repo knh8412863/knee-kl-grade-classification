@@ -21,6 +21,29 @@ docker-compose.yml # MySQL (admin-server용)
 docs/              # 모델링/기능별 작업 기록
 ```
 
+## 서비스 아키텍처
+
+점선 없이 화살표는 실시간 서비스 흐름. 카메라 실시간 미리보기는 지연을 줄이기 위해 Java를 거치지 않고 FastAPI에 직접 연결.
+
+```mermaid
+flowchart LR
+    subgraph offline["오프라인 · 모델 학습"]
+        A[X-ray 데이터셋<br/>OAI/Mendeley] --> B[CNN 파인튜닝<br/>ResNet/EfficientNet] --> C[학습된 판독 모델<br/>KL grade 0~4 분류기]
+    end
+
+    subgraph realtime["실시간 서비스"]
+        CAM[카메라 촬영<br/>실시간 미리보기] -->|프레임 전송| API[Python FastAPI<br/>AI 추론 · LLM 판독문 생성]
+        WEB[웹 업로드] --> JAVA[Java Spring Boot<br/>환자 · 이력 관리]
+        JAVA -->|이미지 전달 REST| API
+        API -->|판독 결과 JSON| JAVA
+        API -->|실시간 결과| CAMVIEW[웹 화면<br/>등급 + Grad-CAM 오버레이]
+        JAVA --> DB[(DB<br/>환자 · 판독 이력)]
+        JAVA -->|중증 판정 시| ALERT[알림 시스템<br/>이메일]
+    end
+
+    C -.모델 로드.-> API
+```
+
 ## 문서
 
 - [`docs/modeling.md`](docs/modeling.md) — 모델링 실험 기록 및 트러블슈팅
